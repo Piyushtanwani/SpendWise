@@ -61,15 +61,15 @@ const TransactionForm = ({ categories, initialData, onSubmit, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4">
-      <div className="w-full max-w-md rounded-lg bg-paper p-6 shadow-2xl">
-        <div className="flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-3 sm:p-4 backdrop-blur-xs">
+      <div className="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-xl bg-paper p-5 sm:p-6 shadow-2xl border border-ink/10">
+        <div className="flex items-center justify-between border-b border-ink/10 pb-3">
           <h2 className="font-display text-lg font-semibold text-ink">
             {initialData ? "Edit transaction" : "Add transaction"}
           </h2>
           <button
             onClick={onClose}
-            className="rounded p-1 text-slate hover:bg-ink/5 hover:text-ink"
+            className="flex h-8 w-8 items-center justify-center rounded p-1 text-slate hover:bg-ink/5 hover:text-ink transition"
             aria-label="Close"
           >
             <X size={18} />
@@ -77,7 +77,9 @@ const TransactionForm = ({ categories, initialData, onSubmit, onClose }) => {
         </div>
 
         {error && (
-          <div className="mt-3 rounded-md bg-rust/10 px-3 py-2 text-sm text-rust">{error}</div>
+          <div className="mt-3 rounded-md bg-rust/10 border border-rust/20 px-3 py-2 text-xs sm:text-sm text-rust">
+            {error}
+          </div>
         )}
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
