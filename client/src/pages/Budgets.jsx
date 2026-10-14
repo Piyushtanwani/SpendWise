@@ -56,26 +56,28 @@ const Budgets = () => {
 
   return (
     <Layout>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold text-ink">Budgets</h1>
           <p className="mt-1 text-sm text-slate">Set a monthly limit per category and track progress.</p>
         </div>
-        <MonthSwitcher month={month} onChange={setMonth} />
+        <div className="self-start sm:self-auto">
+          <MonthSwitcher month={month} onChange={setMonth} />
+        </div>
       </div>
 
-      <form onSubmit={handleCreate} className="mt-6 rounded-lg border border-ink/10 bg-white p-5">
+      <form onSubmit={handleCreate} className="mt-6 rounded-lg border border-ink/10 bg-white p-4 sm:p-5 shadow-xs">
         <h2 className="font-display text-base font-semibold text-ink">Set a budget</h2>
         {error && <p className="mt-2 text-sm text-rust">{error}</p>}
-        <div className="mt-3 flex flex-wrap items-end gap-3">
-          <div>
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+          <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[160px]">
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate">
               Category
             </label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="rounded-md border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-ledger"
+              className="w-full rounded-md border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-ledger"
             >
               <option value="">Select category</option>
               {categories.map((c) => (
@@ -85,7 +87,7 @@ const Budgets = () => {
               ))}
             </select>
           </div>
-          <div>
+          <div className="w-full sm:w-auto">
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate">
               Monthly limit
             </label>
@@ -95,13 +97,13 @@ const Budgets = () => {
               step="1"
               value={limit}
               onChange={(e) => setLimit(e.target.value)}
-              className="w-32 rounded-md border border-ink/10 bg-white px-3 py-2 font-mono text-sm outline-none focus:border-ledger"
+              className="w-full sm:w-36 rounded-md border border-ink/10 bg-white px-3 py-2 font-mono text-sm outline-none focus:border-ledger"
               placeholder="0.00"
             />
           </div>
           <button
             type="submit"
-            className="flex items-center gap-1.5 rounded-md bg-ink px-4 py-2 text-sm font-medium text-white transition hover:bg-ink-light"
+            className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-md bg-ink px-4 py-2 text-sm font-medium text-white transition hover:bg-ink-light shadow-xs"
           >
             <Plus size={16} /> Save budget
           </button>
@@ -121,26 +123,26 @@ const Budgets = () => {
             const over = b.spent > b.monthlyLimit;
             const barColor = over ? "#C1533E" : pct >= 80 ? "#C98A2C" : "#3F7259";
             return (
-              <div key={b._id} className="rounded-lg border border-ink/10 bg-white p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
+              <div key={b._id} className="rounded-lg border border-ink/10 bg-white p-3.5 sm:p-4 shadow-xs">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <span
-                      className="h-2.5 w-2.5 rounded-full"
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
                       style={{ backgroundColor: b.category?.color }}
                     />
-                    <span className="text-sm font-medium text-ink">{b.category?.name}</span>
+                    <span className="truncate text-sm font-medium text-ink">{b.category?.name}</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-sm text-slate">
+                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                    <span className="font-mono text-xs sm:text-sm text-slate">
                       {formatCurrency(b.spent, user?.currency)} /{" "}
                       {formatCurrency(b.monthlyLimit, user?.currency)}
                     </span>
                     <button
                       onClick={() => handleDelete(b._id)}
-                      className="rounded p-1.5 text-slate hover:bg-rust/10 hover:text-rust"
+                      className="flex h-8 w-8 items-center justify-center rounded text-slate hover:bg-rust/10 hover:text-rust transition"
                       aria-label="Delete budget"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={15} />
                     </button>
                   </div>
                 </div>
