@@ -11,11 +11,11 @@ const TransactionList = ({ transactions, currency, onEdit, onDelete }) => {
   }
 
   return (
-    <div className="divide-y divide-ink/8 rounded-lg border border-ink/10 bg-white">
+    <div className="divide-y divide-ink/8 rounded-lg border border-ink/10 bg-white shadow-xs">
       {transactions.map((t) => (
         <div
           key={t._id}
-          className="group flex items-center gap-4 px-5 py-3.5 transition hover:bg-paper-dim/60"
+          className="group flex items-center gap-2.5 sm:gap-4 px-3 sm:px-5 py-3 sm:py-3.5 transition hover:bg-paper-dim/60"
         >
           <span
             className="h-2 w-2 shrink-0 rounded-full"
@@ -23,11 +23,11 @@ const TransactionList = ({ transactions, currency, onEdit, onDelete }) => {
           />
 
           <div className="ledger-row flex-1 min-w-0">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-ink">
+            <div className="min-w-0 pr-1">
+              <p className="truncate text-sm font-medium text-ink" title={t.description || t.category?.name}>
                 {t.description || t.category?.name || "Untitled"}
               </p>
-              <p className="text-xs text-slate">
+              <p className="truncate text-xs text-slate">
                 {t.category?.name} · {new Date(t.date).toLocaleDateString("en-US", {
                   month: "short",
                   day: "numeric",
@@ -40,7 +40,7 @@ const TransactionList = ({ transactions, currency, onEdit, onDelete }) => {
           </div>
 
           <span
-            className={`shrink-0 font-mono text-sm font-semibold ${
+            className={`shrink-0 font-mono text-xs sm:text-sm font-semibold whitespace-nowrap ${
               t.type === "income" ? "text-ledger" : "text-rust"
             }`}
           >
@@ -48,20 +48,21 @@ const TransactionList = ({ transactions, currency, onEdit, onDelete }) => {
             {formatCurrency(t.amount, currency)}
           </span>
 
-          <div className="flex shrink-0 gap-1 opacity-0 transition group-hover:opacity-100">
+          {/* Action buttons: always visible on touch screens, hover-reveal on desktop */}
+          <div className="flex shrink-0 items-center gap-0.5 sm:gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
             <button
               onClick={() => onEdit(t)}
-              className="rounded p-1.5 text-slate hover:bg-ink/5 hover:text-ink"
-              aria-label="Edit"
+              className="flex h-8 w-8 items-center justify-center rounded text-slate hover:bg-ink/5 hover:text-ink transition"
+              aria-label="Edit transaction"
             >
-              <Pencil size={14} />
+              <Pencil size={15} />
             </button>
             <button
               onClick={() => onDelete(t._id)}
-              className="rounded p-1.5 text-slate hover:bg-rust/10 hover:text-rust"
-              aria-label="Delete"
+              className="flex h-8 w-8 items-center justify-center rounded text-slate hover:bg-rust/10 hover:text-rust transition"
+              aria-label="Delete transaction"
             >
-              <Trash2 size={14} />
+              <Trash2 size={15} />
             </button>
           </div>
         </div>
