@@ -66,7 +66,7 @@ const Transactions = () => {
 
   return (
     <Layout>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold text-ink">Transactions</h1>
           <p className="mt-1 text-sm text-slate">Every entry in your ledger, filterable by month.</p>
@@ -76,39 +76,43 @@ const Transactions = () => {
             setEditing(null);
             setShowForm(true);
           }}
-          className="flex items-center gap-1.5 rounded-md bg-ink px-4 py-2 text-sm font-medium text-white transition hover:bg-ink-light"
+          className="self-start sm:self-auto flex items-center gap-1.5 rounded-md bg-ink px-4 py-2 text-sm font-medium text-white transition hover:bg-ink-light shadow-xs"
         >
-          <Plus size={16} /> Add
+          <Plus size={16} /> Add Transaction
         </button>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <MonthSwitcher month={month} onChange={setMonth} />
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="w-full sm:w-auto">
+          <MonthSwitcher month={month} onChange={setMonth} />
+        </div>
 
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          className="rounded-md border border-ink/10 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ledger"
-        >
-          <option value="">All types</option>
-          <option value="income">Income</option>
-          <option value="expense">Expense</option>
-        </select>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-3">
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            className="w-full rounded-md border border-ink/10 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ledger"
+          >
+            <option value="">All types</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
 
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="rounded-md border border-ink/10 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ledger"
-        >
-          <option value="">All categories</option>
-          {categories.map((c) => (
-            <option key={c._id} value={c._id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="w-full rounded-md border border-ink/10 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ledger truncate"
+          >
+            <option value="">All categories</option>
+            {categories.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
-        <div className="relative flex-1 min-w-[180px]">
+        <div className="relative w-full sm:flex-1 sm:min-w-[180px]">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate" />
           <input
             type="text"
