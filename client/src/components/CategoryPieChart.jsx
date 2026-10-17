@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { formatCurrency } from "../utils/format";
 
@@ -13,6 +14,16 @@ const CustomTooltip = ({ active, payload, currency }) => {
 };
 
 const CategoryPieChart = ({ data, currency }) => {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth < 640 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   if (!data?.length) {
     return (
       <div className="flex h-64 items-center justify-center text-sm text-slate">
@@ -22,14 +33,14 @@ const CategoryPieChart = ({ data, currency }) => {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={280}>
-      <PieChart>
+    <ResponsiveContainer width="100%" height={isMobile ? 300 : 280}>
+      <PieChart margin={{ top: 0, right: 0, left: 0, bottom: isMobile ? 10 : 0 }}>
         <Pie
           data={data}
           dataKey="total"
           nameKey="name"
-          innerRadius={60}
-          outerRadius={95}
+          innerRadius={isMobile ? 45 : 60}
+          outerRadius={isMobile ? 75 : 95}
           paddingAngle={2}
           strokeWidth={2}
           stroke="#F7F5F0"
@@ -40,12 +51,16 @@ const CategoryPieChart = ({ data, currency }) => {
         </Pie>
         <Tooltip content={<CustomTooltip currency={currency} />} />
         <Legend
-          layout="vertical"
-          verticalAlign="middle"
-          align="right"
+          layout={isMobile ? "horizontal" : "vertical"}
+          verticalAlign={isMobile ? "bottom" : "middle"}
+          align={isMobile ? "center" : "right"}
           iconType="circle"
           iconSize={8}
-          wrapperStyle={{ fontSize: "12px", color: "#1B2430" }}
+          wrapperStyle={{
+            fontSize: isMobile ? "11px" : "12px",
+            color: "#1B2430",
+            paddingTop: isMobile ? "8px" : "0",
+          }}
         />
       </PieChart>
     </ResponsiveContainer>
