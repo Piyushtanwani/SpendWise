@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import Categories from "./pages/Categories";
 import Budgets from "./pages/Budgets";
+import Split from "./pages/Split";
 
 function App() {
   return (
@@ -20,6 +21,14 @@ function App() {
             element={
               <PrivateRoute>
                 <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/split"
+            element={
+              <PrivateRoute>
+                <Split />
               </PrivateRoute>
             }
           />
