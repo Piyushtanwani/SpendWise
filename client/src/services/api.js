@@ -17,9 +17,22 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const config = error.config;
+
+    // Retry transient 500 / network drop errors once after a brief pause
+    if (
+      config &&
+      !config._hasRetried &&
+      (!error.response || error.response.status >= 500)
+    ) {
+      config._hasRetried = true;
+      await new Promise((r) => setTimeout(r, 800));
+      return api(config);
+    }
+
     const isPublicPage = ["/login", "/register"].includes(
-      window.location.pathname,
+      window.location.pathname
     );
 
     if (error.response?.status === 401 && !isPublicPage) {
@@ -33,7 +46,7 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  },
+  }
 );
 
 export default api;
