@@ -51,13 +51,49 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
-  const register = async (name, email, password) => {
+  const register = async (name, email, password, otp) => {
     const { data } = await api.post("/auth/register", {
       name,
       email,
       password,
+      otp,
     });
     persistSession(data);
+    return data;
+  };
+
+  const googleLogin = async (credential) => {
+    const { data } = await api.post("/auth/google", { credential });
+    persistSession(data);
+    return data;
+  };
+
+  const loginWithOtp = async (email, otp) => {
+    const { data } = await api.post("/auth/login-otp", { email, otp });
+    persistSession(data);
+    return data;
+  };
+
+  const sendOtp = async (email, purpose = "reset_password", name = "") => {
+    const { data } = await api.post("/auth/send-otp", { email, purpose, name });
+    return data;
+  };
+
+  const verifyOtp = async (email, otp, purpose = "reset_password") => {
+    const { data } = await api.post("/auth/verify-otp", {
+      email,
+      otp,
+      purpose,
+    });
+    return data;
+  };
+
+  const resetPassword = async (email, otp, newPassword) => {
+    const { data } = await api.post("/auth/reset-password", {
+      email,
+      otp,
+      newPassword,
+    });
     return data;
   };
 
@@ -68,7 +104,20 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        googleLogin,
+        loginWithOtp,
+        sendOtp,
+        verifyOtp,
+        resetPassword,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
