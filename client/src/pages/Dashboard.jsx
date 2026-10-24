@@ -6,6 +6,7 @@ import MonthSwitcher from "../components/MonthSwitcher";
 import SummaryCards from "../components/SummaryCards";
 import CategoryPieChart from "../components/CategoryPieChart";
 import TrendChart from "../components/TrendChart";
+import SpendWiseSplitDashboardSection from "../components/SpendWiseSplitDashboardSection";
 import { currentMonthStr } from "../utils/format";
 
 const Dashboard = () => {
@@ -48,25 +49,32 @@ const Dashboard = () => {
 
   return (
     <Layout>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold text-ink">
             Welcome back, {user?.name?.split(" ")[0]}
           </h1>
           <p className="mt-1 text-sm text-slate">Here's how your money moved this month.</p>
         </div>
-        <MonthSwitcher month={month} onChange={setMonth} />
+        <div className="self-start sm:self-auto">
+          <MonthSwitcher month={month} onChange={setMonth} />
+        </div>
       </div>
 
       <div className="mt-6">
         <SummaryCards summary={summary} currency={user?.currency} />
       </div>
 
+      {/* SpendWise Split Overview Section */}
+      <div className="mt-6">
+        <SpendWiseSplitDashboardSection currency={user?.currency} />
+      </div>
+
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-5">
-        <div className="rounded-lg border border-ink/10 bg-white p-5 lg:col-span-2">
+        <div className="min-w-0 rounded-lg border border-ink/10 bg-white p-4 sm:p-5 lg:col-span-2">
           <h2 className="font-display text-base font-semibold text-ink">Spending by category</h2>
           <p className="text-xs text-slate">Where this month's expenses went</p>
-          <div className="mt-2">
+          <div className="mt-2 min-w-0">
             {loading ? (
               <div className="flex h-64 items-center justify-center text-sm text-slate">
                 Loading…
@@ -77,12 +85,12 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="rounded-lg border border-ink/10 bg-white p-5 lg:col-span-3">
+        <div className="min-w-0 rounded-lg border border-ink/10 bg-white p-4 sm:p-5 lg:col-span-3">
           <h2 className="font-display text-base font-semibold text-ink">
             Income vs. expenses, {month.split("-")[0]}
           </h2>
           <p className="text-xs text-slate">Monthly trend for the year</p>
-          <div className="mt-2">
+          <div className="mt-2 min-w-0">
             {loading ? (
               <div className="flex h-64 items-center justify-center text-sm text-slate">
                 Loading…
