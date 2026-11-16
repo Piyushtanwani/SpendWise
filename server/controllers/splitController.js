@@ -128,8 +128,8 @@ const computeUserBalances = async (userId) => {
     return {
       friend: item.friend,
       net,
-      owedToUser: item.owedToUser > 0 ? item.owedToUser : 0,
-      userOwes: item.userOwes > 0 ? item.userOwes : 0,
+      owedToUser: net > 0 ? net : 0,
+      userOwes: net < 0 ? Math.abs(net) : 0,
       status: net > 0 ? "owes_you" : net < 0 ? "you_owe" : "settled",
     };
   });
@@ -191,6 +191,7 @@ const getFriendBalance = asyncHandler(async (req, res) => {
     ],
   })
     .populate("payer", "_id name email")
+    .populate("splits.user", "_id name email")
     .populate("category", "name color")
     .sort({ date: -1, createdAt: -1 });
 
@@ -264,7 +265,16 @@ const createSharedExpense = asyncHandler(async (req, res) => {
       throw new Error("Participants must be distinct users");
     }
 
-    // Verify friendship with creator for each other participant
+    // Verify friendship between creator and payer if creator is not payer
+    if (payerId.toString() !== req.user._id.toString()) {
+      const isPayerFriend = await checkAcceptedFriendship(req.user._id, payerId);
+      if (!isPayerFriend) {
+        res.status(400);
+        throw new Error("You can only specify a payer who is an accepted friend");
+      }
+    }
+
+    // Verify friendship with creator and payer for each other participant
     for (const pId of uniqueParticipants) {
       if (pId !== req.user._id.toString()) {
         const isFriend = await checkAcceptedFriendship(req.user._id, pId);
@@ -272,6 +282,15 @@ const createSharedExpense = asyncHandler(async (req, res) => {
           res.status(400);
           throw new Error(
             `Participant ${pId} is not an accepted friend of the creator`
+          );
+        }
+      }
+      if (pId !== payerId.toString()) {
+        const isFriendWithPayer = await checkAcceptedFriendship(payerId, pId);
+        if (!isFriendWithPayer) {
+          res.status(400);
+          throw new Error(
+            `Participant ${pId} is not an accepted friend of the payer`
           );
         }
       }
@@ -317,6 +336,15 @@ const createSharedExpense = asyncHandler(async (req, res) => {
     let totalShares = 0;
     finalSplits = [];
 
+    // Verify friendship between creator and payer if creator is not payer
+    if (payerId.toString() !== req.user._id.toString()) {
+      const isPayerFriend = await checkAcceptedFriendship(req.user._id, payerId);
+      if (!isPayerFriend) {
+        res.status(400);
+        throw new Error("You can only specify a payer who is an accepted friend");
+      }
+    }
+
     for (const s of customSplits) {
       const shareAmount = round2(s.amount);
       if (shareAmount < 0) {
@@ -331,6 +359,15 @@ const createSharedExpense = asyncHandler(async (req, res) => {
           res.status(400);
           throw new Error(
             `Participant ${pId} is not an accepted friend of the creator`
+          );
+        }
+      }
+      if (pId !== payerId.toString()) {
+        const isFriendWithPayer = await checkAcceptedFriendship(payerId, pId);
+        if (!isFriendWithPayer) {
+          res.status(400);
+          throw new Error(
+            `Participant ${pId} is not an accepted friend of the payer`
           );
         }
       }
@@ -361,8 +398,9 @@ const createSharedExpense = asyncHandler(async (req, res) => {
   }
 
   // Prevent duplicate creation from retried network requests within 30 seconds
-  const recentDuplicate = await SharedExpense.findOne({
+  const recentDuplicates = await SharedExpense.find({
     creator: req.user._id,
+    payer: payerId,
     description: description.trim(),
     amount: numAmount,
     createdAt: { $gte: new Date(Date.now() - 30000) },
@@ -373,8 +411,14 @@ const createSharedExpense = asyncHandler(async (req, res) => {
     { path: "category", select: "_id name color type" },
   ]);
 
-  if (recentDuplicate) {
-    return res.status(201).json(recentDuplicate);
+  const currentParticipantIds = finalSplits.map((s) => s.user.toString()).sort().join(",");
+  const exactDuplicate = recentDuplicates.find((dup) => {
+    const dupParticipantIds = dup.splits.map((s) => (s.user._id || s.user).toString()).sort().join(",");
+    return dupParticipantIds === currentParticipantIds;
+  });
+
+  if (exactDuplicate) {
+    return res.status(201).json(exactDuplicate);
   }
 
   const sharedExpense = await SharedExpense.create({
@@ -406,19 +450,29 @@ const getSharedExpenses = asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 50;
 
-  const filter = {
-    $or: [{ payer: req.user._id }, { "splits.user": req.user._id }],
+  const userConditions = [
+    { creator: req.user._id },
+    { payer: req.user._id },
+    { "splits.user": req.user._id },
+  ];
+
+  let filter = {
+    $or: userConditions,
   };
 
   if (friendId) {
-    filter.$and = [
-      {
-        $or: [{ payer: req.user._id }, { "splits.user": req.user._id }],
-      },
-      {
-        $or: [{ payer: friendId }, { "splits.user": friendId }],
-      },
-    ];
+    filter = {
+      $and: [
+        { $or: userConditions },
+        {
+          $or: [
+            { creator: friendId },
+            { payer: friendId },
+            { "splits.user": friendId },
+          ],
+        },
+      ],
+    };
   }
 
   const [expenses, total] = await Promise.all([
@@ -535,10 +589,16 @@ const updateSharedExpense = asyncHandler(async (req, res) => {
   expense.payer = effectivePayer;
   expense.splitType = effectiveSplitType;
 
-  if (participants || customSplits) {
+  const shouldRecalculateSplits =
+    participants ||
+    customSplits ||
+    (amount !== undefined && effectiveSplitType === "equal") ||
+    (splitType !== undefined && splitType !== expense.splitType);
+
+  if (shouldRecalculateSplits) {
     let finalSplits = [];
     if (effectiveSplitType === "equal") {
-      const parts = participants || expense.splits.map((s) => s.user.toString());
+      const parts = participants || expense.splits.map((s) => (s.user._id || s.user).toString());
       const uniqueParticipants = [...new Set(parts.map((p) => p.toString()))];
 
       if (uniqueParticipants.length < 2) {
@@ -548,10 +608,18 @@ const updateSharedExpense = asyncHandler(async (req, res) => {
 
       for (const pId of uniqueParticipants) {
         if (pId !== req.user._id.toString()) {
-          const isFriend = await checkAcceptedFriendship(req.user._id, pId);
-          if (!isFriend) {
+          const isFriendWithUser = await checkAcceptedFriendship(req.user._id, pId);
+          const isFriendWithCreator = await checkAcceptedFriendship(expense.creator, pId);
+          if (!isFriendWithUser && !isFriendWithCreator) {
             res.status(400);
             throw new Error(`Participant ${pId} is not an accepted friend`);
+          }
+        }
+        if (pId !== effectivePayer.toString()) {
+          const isFriendWithPayer = await checkAcceptedFriendship(effectivePayer, pId);
+          if (!isFriendWithPayer) {
+            res.status(400);
+            throw new Error(`Participant ${pId} is not an accepted friend of the payer`);
           }
         }
       }
@@ -599,10 +667,18 @@ const updateSharedExpense = asyncHandler(async (req, res) => {
         uniqueParticipants.push(pId);
 
         if (pId !== req.user._id.toString()) {
-          const isFriend = await checkAcceptedFriendship(req.user._id, pId);
-          if (!isFriend) {
+          const isFriendWithUser = await checkAcceptedFriendship(req.user._id, pId);
+          const isFriendWithCreator = await checkAcceptedFriendship(expense.creator, pId);
+          if (!isFriendWithUser && !isFriendWithCreator) {
             res.status(400);
             throw new Error(`Participant ${pId} is not an accepted friend`);
+          }
+        }
+        if (pId !== effectivePayer.toString()) {
+          const isFriendWithPayer = await checkAcceptedFriendship(effectivePayer, pId);
+          if (!isFriendWithPayer) {
+            res.status(400);
+            throw new Error(`Participant ${pId} is not an accepted friend of the payer`);
           }
         }
 
@@ -743,10 +819,26 @@ const createSettlement = asyncHandler(async (req, res) => {
       res.status(400);
       throw new Error("You do not have an outstanding debt with this friend to settle");
     }
-    if (numAmount > round2(maxAllowedDebt + 0.01)) {
+
+    // Account for existing pending repayments already sent to this friend
+    const pendingSettlements = await Settlement.find({
+      sender: req.user._id,
+      recipient: friendId,
+      status: "pending",
+    });
+    const pendingSentTotal = pendingSettlements.reduce((sum, s) => round2(sum + s.amount), 0);
+    const effectiveRemainingDebt = Math.max(0, round2(maxAllowedDebt - pendingSentTotal));
+
+    if (effectiveRemainingDebt <= 0) {
       res.status(400);
       throw new Error(
-        `Repayment amount (${numAmount}) exceeds your outstanding balance (${maxAllowedDebt})`
+        "You already have pending repayment settlement(s) awaiting confirmation that cover your balance"
+      );
+    }
+    if (numAmount > round2(effectiveRemainingDebt + 0.01)) {
+      res.status(400);
+      throw new Error(
+        `Repayment amount (${numAmount}) exceeds your remaining unsettled balance (${effectiveRemainingDebt})`
       );
     }
     senderId = req.user._id;
@@ -839,6 +931,19 @@ const confirmSettlement = asyncHandler(async (req, res) => {
     throw new Error(`This settlement has already been ${settlement.status}`);
   }
 
+  // Verify that confirmation does not exceed sender's outstanding debt
+  const balances = await computeUserBalances(settlement.sender);
+  const senderBal = balances.friends.find(
+    (f) => f.friend._id.toString() === settlement.recipient.toString()
+  );
+  const actualDebt = senderBal && senderBal.net < 0 ? Math.abs(senderBal.net) : 0;
+  if (settlement.amount > round2(actualDebt + 0.01)) {
+    res.status(400);
+    throw new Error(
+      `Cannot confirm settlement: amount (${settlement.amount}) exceeds sender's current outstanding balance (${actualDebt})`
+    );
+  }
+
   settlement.status = "confirmed";
   settlement.confirmedAt = new Date();
   await settlement.save();
@@ -903,18 +1008,22 @@ const deleteSettlement = asyncHandler(async (req, res) => {
     throw new Error("Settlement not found");
   }
 
-  if (settlement.sender.toString() !== req.user._id.toString()) {
+  const isSender = settlement.sender.toString() === req.user._id.toString();
+  const isRecipient = settlement.recipient.toString() === req.user._id.toString();
+
+  if (!isSender && !isRecipient) {
     res.status(403);
     throw new Error("Not authorized to cancel this settlement");
   }
 
-  if (settlement.status !== "pending") {
+  // Sender can only cancel pending settlements
+  if (isSender && !isRecipient && settlement.status !== "pending") {
     res.status(400);
     throw new Error("Cannot cancel a settlement that is not pending");
   }
 
   await settlement.deleteOne();
-  res.json({ message: "Pending settlement cancelled successfully" });
+  res.json({ message: "Settlement cancelled successfully" });
 });
 
 module.exports = {

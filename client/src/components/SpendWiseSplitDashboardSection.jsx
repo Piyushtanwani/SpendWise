@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 import { formatCurrency } from "../utils/format";
 import {
   Users,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 
 const SpendWiseSplitDashboardSection = ({ currency }) => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [balances, setBalances] = useState({
     totalOwedToUser: 0,
@@ -44,9 +46,9 @@ const SpendWiseSplitDashboardSection = ({ currency }) => {
       setIncomingRequests(reqRes.data.incoming || []);
 
       // Filter pending settlements where user is recipient
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const currentUserId = user?._id || JSON.parse(localStorage.getItem("user") || "{}")._id;
       const incoming = (settRes.data || []).filter(
-        (s) => s.recipient._id === user._id && s.status === "pending"
+        (s) => (s.recipient._id || s.recipient) === currentUserId && s.status === "pending"
       );
       setPendingSettlements(incoming);
     } catch (err) {

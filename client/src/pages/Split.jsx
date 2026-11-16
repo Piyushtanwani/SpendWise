@@ -146,10 +146,12 @@ const Split = () => {
       await api.post("/friends/request", { recipientId });
       showFeedback("Friend request sent successfully!");
       // Refresh search results
-      if (searchQuery) {
-        const { data } = await api.get(`/friends/search?query=${encodeURIComponent(searchQuery)}`);
-        setSearchResults(data);
-      }
+      const q = searchQuery.trim();
+      const url = q
+        ? `/friends/search?query=${encodeURIComponent(q)}`
+        : "/friends/search";
+      const { data } = await api.get(url);
+      setSearchResults(data);
       fetchData();
     } catch (err) {
       showFeedback(err.response?.data?.message || "Failed to send request", "error");
@@ -221,10 +223,10 @@ const Split = () => {
       } else {
         updated = [...prev.selectedParticipants, userId];
       }
-      // If payer was removed, reset payer to current user
+      // If payer was removed, reset payer to first available participant
       let nextPayer = prev.payer;
       if (!updated.includes(nextPayer)) {
-        nextPayer = user?._id;
+        nextPayer = updated[0] || user?._id;
       }
       return { ...prev, selectedParticipants: updated, payer: nextPayer };
     });
@@ -262,11 +264,11 @@ const Split = () => {
 
   const customTotal = useMemo(() => {
     if (expenseForm.splitType !== "exact") return 0;
-    return Object.values(expenseForm.customShares).reduce(
-      (sum, val) => sum + (parseFloat(val) || 0),
+    return expenseForm.selectedParticipants.reduce(
+      (sum, pId) => sum + (parseFloat(expenseForm.customShares[pId]) || 0),
       0
     );
-  }, [expenseForm.splitType, expenseForm.customShares]);
+  }, [expenseForm.splitType, expenseForm.customShares, expenseForm.selectedParticipants]);
 
   // Submit Expense
   const handleSaveExpense = async (e) => {
@@ -1333,12 +1335,18 @@ const Split = () => {
                     }
                     className="mt-1 w-full rounded-md border border-ink/20 px-3 py-2 text-sm text-ink focus:border-ledger focus:outline-none"
                   >
-                    <option value={user?._id}>You ({user?.name})</option>
-                    {friends.map((f) => (
-                      <option key={f.friend._id} value={f.friend._id}>
-                        {f.friend.name}
-                      </option>
-                    ))}
+                    {expenseForm.selectedParticipants.includes(user?._id) && (
+                      <option value={user?._id}>You ({user?.name})</option>
+                    )}
+                    {friends
+                      .filter((f) =>
+                        expenseForm.selectedParticipants.includes(f.friend._id)
+                      )
+                      .map((f) => (
+                        <option key={f.friend._id} value={f.friend._id}>
+                          {f.friend.name}
+                        </option>
+                      ))}
                   </select>
                 </div>
               </div>
@@ -1608,7 +1616,7 @@ const Split = () => {
                       ...settleForm,
                       recipientId: rId,
                       payerDirection: newDirection,
-                      amount: newAmt || settleForm.amount,
+                      amount: newAmt,
                     });
                   }}
                   className="mt-1 w-full rounded-md border border-ink/20 px-3 py-2 text-sm text-ink focus:border-ledger focus:outline-none"

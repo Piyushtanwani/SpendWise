@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const Friendship = require("../models/Friendship");
 const asyncHandler = require("../middleware/asyncHandler");
+const { computeUserBalances } = require("./splitController");
 
 // Helper: check if two users are accepted friends
 const areFriends = async (userId1, userId2) => {
@@ -278,6 +279,25 @@ const removeFriend = asyncHandler(async (req, res) => {
   if (!isParticipant) {
     res.status(403);
     throw new Error("Not authorized to remove this friendship");
+  }
+
+  // Prevent removing accepted friendship if there is an active outstanding balance
+  if (friendship.status === "accepted") {
+    const otherUserId =
+      friendship.requester.toString() === req.user._id.toString()
+        ? friendship.recipient
+        : friendship.requester;
+
+    const balances = await computeUserBalances(req.user._id);
+    const friendBal = balances.friends.find(
+      (f) => f.friend._id.toString() === otherUserId.toString()
+    );
+    if (friendBal && Math.abs(friendBal.net) > 0.009) {
+      res.status(400);
+      throw new Error(
+        `Cannot remove friendship: there is an outstanding balance of ${Math.abs(friendBal.net)} between you. Please settle all shared debts first.`
+      );
+    }
   }
 
   await friendship.deleteOne();
